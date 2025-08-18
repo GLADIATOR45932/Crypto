@@ -1,150 +1,831 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>Gladiator Crypto</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: black;
-      color: white;
-      overflow-x: hidden;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Crypto & FX Radar</title>
 
-    /* 🔹 Header */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 15px 30px;
-      background: linear-gradient(to right, #000428, #004e92);
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
+<!-- Chart.js برای نمودار -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-    header h1 {
-      margin: 0;
-      color: cyan;
-    }
+<style>
+  :root{
+    --bg:#070b12;
+    --panel:#0d1320;
+    --ink:#eaf1ff;
+    --muted:#9fb2d1;
+    --line:#132033;
+    --blue:#24a1ff;
+    --green:#16c784;
+    --red:#ea3943;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family: IRANSans, ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif}
+  a{color:inherit}
 
-    nav {
-      display: flex;
-      gap: 20px;
-    }
+  /* حباب‌های آبی چرخان */
+  body::before, body::after{
+    content:""; position:fixed; width:55vmin; height:55vmin; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(closest-side, rgba(36,161,255,.35), transparent 60%),
+      conic-gradient(from 0deg, rgba(36,161,255,.25), transparent 40%, rgba(36,161,255,.6), transparent 70%);
+    filter: blur(18px) saturate(140%);
+    animation: spin 16s linear infinite;
+  }
+  body::before{ top:-12vmin; right:-14vmin }
+  body::after{ bottom:-14vmin; left:-12vmin; animation-direction:reverse }
+  @keyframes spin{ to{ transform:rotate(360deg)} }
 
-    nav button {
-      background: transparent;
-      border: none;
-      color: white;
-      font-size: 18px;
-      cursor: pointer;
-    }
+  /* شِل اصلی */
+  .app{ position:relative; min-height:100%; padding:86px 16px 100px; isolation:isolate }
+  header{
+    position:fixed; top:0; left:0; right:0; height:72px; z-index:10;
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    background:linear-gradient(180deg,#0a111c,#0a0f18); border-bottom:1px solid var(--line);
+  }
+  .brand{ font-weight:900; letter-spacing:.18em; color:#fff; text-shadow:0 0 18px rgba(36,161,255,.35) }
+  .nav{ position:absolute; inset-inline:10px auto; left:unset; right:10px; display:flex; gap:10px; align-items:center }
+  .nav-left{ position:absolute; left:10px; display:flex; gap:10px }
+  .btn-ico{
+    width:48px; height:48px; border-radius:14px; border:1px solid var(--line);
+    background:linear-gradient(180deg,#0f1726,#0b1220); display:grid; place-items:center; cursor:pointer;
+    box-shadow:inset 0 0 0 1px rgba(36,161,255,.08)
+  }
+  .btn-ico:active{ transform:scale(.97) }
+  .btn-ico.active{ outline:2px solid rgba(36,161,255,.55); box-shadow:0 0 0 6px rgba(36,161,255,.08) inset }
+  .ico{ width:26px; height:26px; fill:none; stroke:#24a1ff; stroke-width:2.2 }
 
-    /* 🔹 Bubbles animation */
-    .bubble {
-      position: absolute;
-      bottom: -100px;
-      background: rgba(0, 162, 255, 0.4);
-      border-radius: 50%;
-      animation: rise 15s infinite ease-in;
-    }
+  /* تب‌ها */
+  section{ display:none }
+  section.active{ display:block }
+  .grid{ display:grid; gap:16px; max-width:1100px; margin:0 auto }
+  .cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px }
+  .card{ background:linear-gradient(180deg,#0e1726,#0b1220); border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(36,161,255,.06) }
+  .card-body{ padding:14px 14px 16px }
+  .title{ font-weight:900; letter-spacing:.06em; font-size:18px }
+  .muted{ color:var(--muted); font-size:13px; margin-top:6px }
+  .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+  .btn{
+    padding:10px 14px; border-radius:12px; border:1px solid var(--line);
+    background:linear-gradient(180deg,#122035,#0e1728); color:#fff; font-weight:800; letter-spacing:.03em;
+    cursor:pointer; transition:.15s transform ease
+  }
+  .btn:active{ transform:translateY(1px) }
+  .btn.blue{ background:linear-gradient(180deg,#1e6fff,#1754cc); border-color:#134ab5; box-shadow:0 4px 18px rgba(36,161,255,.3) }
+  .chip{ padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:#0b1220; font-size:12px; color:var(--muted) }
 
-    @keyframes rise {
-      from { transform: translateY(0) scale(1); opacity: 1; }
-      to { transform: translateY(-2500px) scale(0.5); opacity: 0; }
-    }
+  /* جدول قیمت‌ها */
+  .toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between }
+  .search{ flex:1; min-width:220px }
+  .inp{ width:100%; background:#0a1220; color:#fff; border:1px solid var(--line); padding:10px 12px; border-radius:12px }
+  .table-wrap{ overflow:auto; border:1px solid var(--line); border-radius:14px }
+  table{ width:100%; border-collapse:collapse; font-size:14px }
+  th,td{ padding:10px 12px; border-bottom:1px solid #0f2138 }
+  th{ position:sticky; top:0; background:#0a1424; z-index:1; text-align:right }
+  tr:hover{ background:rgba(36,161,255,.06) }
+  .up{ color:var(--green); font-weight:700 }
+  .down{ color:var(--red); font-weight:700 }
 
-    /* 🔹 Main Content */
-    main {
-      padding: 40px;
-      text-align: center;
-    }
+  /* نمودار */
+  .chart-box{ background:#0b1220; border:1px solid var(--line); border-radius:16px; padding:12px }
 
-    h2 {
-      margin-bottom: 20px;
-      color: #00ffff;
-    }
+  /* کشوی قیمت‌ها (منوی سه‌خط) */
+  .drawer{ position:fixed; inset:0 0 0 auto; width:min(440px,96%); background:linear-gradient(180deg,#0a1322,#07101b);
+    transform:translateX(105%); transition:.25s transform; z-index:20; border-left:1px solid var(--line); display:flex; flex-direction:column; }
+  .drawer.show{ transform:none }
+  .drawer .hd{ padding:12px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between }
+  .drawer .bd{ padding:12px; overflow:auto; display:grid; gap:12px }
+  .close{ cursor:pointer }
 
-    table {
-      width: 80%;
-      margin: auto;
-      border-collapse: collapse;
-      background: #111;
-    }
+  /* پنل AI (مودال) */
+  .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:16px; z-index:30; background:rgba(0,0,0,.55) }
+  .modal.show{ display:flex }
+  .sheet{ width:min(900px,96vw); background:linear-gradient(180deg,#0d1626,#0a1220); border:1px solid var(--line); border-radius:18px; overflow:hidden }
+  .sheet .hd{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line) }
+  .sheet .bd{ padding:14px }
+  .txt{ width:100%; min-height:90px; background:#091222; color:#fff; border:1px solid var(--line); padding:12px; border-radius:12px; resize:vertical }
+  #aiOut .msg{ background:#0b1526; border:1px solid var(--line); border-radius:14px; padding:10px 12px }
 
-    table th, table td {
-      border: 1px solid #00ffff;
-      padding: 10px;
-    }
+  /* شناورهای پایین: AI و ثبت‌نام/پشتیبانی سریع */
+  .fab{ position:fixed; bottom:16px; z-index:15; width:64px; height:64px; border-radius:50%; border:1px solid var(--line);
+        background:radial-gradient(circle at 30% 30%, rgba(36,161,255,.18), #0b1322 60%); display:grid; place-items:center; cursor:pointer;
+        box-shadow:0 10px 28px rgba(0,0,0,.35), inset 0 0 0 1px rgba(36,161,255,.08) }
+  .fab.ai{ right:16px }
+  .fab.support{ right:92px }
+  .fab svg{ width:30px; height:30px; stroke:#24a1ff; fill:none; stroke-width:2.2 }
 
-    .green { color: lime; }
-    .red { color: red; }
+  /* پایین‌صفحه */
+  footer{ position:fixed; bottom:0; left:0; right:0; height:72px; display:flex; align-items:center; justify-content:center; gap:10px;
+          border-top:1px solid var(--line); background:linear-gradient(180deg,#0a111a,#070c14); z-index:8 }
 
-    /* 🔹 Registration form */
-    .register {
-      margin-top: 40px;
-      background: #111;
-      display: inline-block;
-      padding: 20px;
-      border-radius: 10px;
-    }
-
-    .register input {
-      margin: 5px 0;
-      padding: 10px;
-      width: 200px;
-      border: none;
-      border-radius: 5px;
-    }
-
-    .register button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      background: cyan;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-  </style>
+  @media (max-width:540px){
+    header{ gap:8px }
+    .btn-ico{ width:44px; height:44px }
+    .fab{ width:58px; height:58px }
+  }
+</style>
 </head>
 <body>
 
-  <!-- 🔹 Bubbles -->
-  <div class="bubble" style="width:80px; height:80px; left:10%; animation-duration:18s;"></div>
-  <div class="bubble" style="width:50px; height:50px; left:40%; animation-duration:12s;"></div>
-  <div class="bubble" style="width:100px; height:100px; left:70%; animation-duration:20s;"></div>
+<header>
+  <div class="nav-left">
+    <!-- دکمه منوی سه‌خط -->
+    <button class="btn-ico" id="btnDrawer" title="قیمت‌ها">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
 
-  <!-- 🔹 Header -->
-  <header>
-    <h1>Gladiator Crypto</h1>
-    <nav>
-      <button>🏠</button>
-      <button>🎧</button>
-      <button>👤</button>
-    </nav>
-  </header>
+  <div class="btn-ico" data-tab="home" title="خانه">
+    <svg class="ico" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M6 9.5V21h12V9.5"/></svg>
+  </div>
+  <div class="btn-ico" data-tab="support" title="پشتیبانی">
+    <svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v10H7l-3 3V5z"/><path d="M9 9h6M9 12h6"/></svg>
+  </div>
+  <div class="btn-ico" data-tab="account" title="ثبت‌نام">
+    <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+  </div>
 
-  <!-- 🔹 Main -->
-  <main>
-    <h2>Live Crypto Prices (Demo)</h2>
-    <table>
-      <tr><th>Currency</th><th>Price (USD)</th><th>Change</th></tr>
-      <tr><td>Bitcoin</td><td>27,450</td><td class="green">+2.5%</td></tr>
-      <tr><td>Ethereum</td><td>1,750</td><td class="red">-1.3%</td></tr>
-      <tr><td>BNB</td><td>315</td><td class="green">+0.8%</td></tr>
-    </table>
+  <div class="brand">CRYPTO • FX • RADAR</div>
 
-    <!-- 🔹 Register -->
-    <div class="register">
-      <h3>Register</h3>
-      <input type="text" placeholder="Phone number"><br>
-      <input type="text" placeholder="Username"><br>
-      <input type="password" placeholder="Password"><br>
-      <button>Sign Up</button>
+  <!-- شورتکات هوش مصنوعی -->
+  <div class="nav">
+    <button class="btn-ico" id="btnAI" title="هوش مصنوعی">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M8 12h8M12 8v8"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- دکمه‌های شناور -->
+<button class="fab ai" id="fabAI" title="AI">
+  <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M8 12h8M12 8v8"/></svg>
+</button>
+<button class="fab support" id="fabSupport" title="پشتیبانی">
+  <svg viewBox="0 0 24 24"><path d="M4 5h16v10H7l-3 3V5z"/><path d="M9 9h6M9 12h6"/></svg>
+</button>
+
+<div class="app">
+  <!-- تب خانه -->
+  <section id="home" class="active">
+    <div class="grid">
+
+      <!-- تاپ‌بار قیمت و نمودار -->
+      <div class="card">
+        <div class="card-body">
+          <div class="title">بازار لحظه‌ای</div>
+          <div class="muted">قیمت‌های زندهٔ کریپتو و ارز فیات با بروزرسانی خودکار.</div>
+          <div class="toolbar" style="margin-top:10px">
+            <div class="row" style="gap:8px">
+              <span class="chip">آپدیت هر <span id="refreshSec">15</span> ثانیه</span>
+              <button class="btn" id="btnRefresh">بروزرسانی دستی</button>
+            </div>
+            <div class="search"><input id="searchAll" class="inp" placeholder="جستجو در همهٔ نمادها (BTC, ETH, USD, EUR …)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- جدول کریپتو -->
+      <div class="card">
+        <div class="card-body">
+          <div class="row" style="justify-content:space-between; align-items:center">
+            <div class="title">ارزهای دیجیتال</div>
+            <div class="search" style="max-width:320px"><input id="searchCrypto" class="inp" placeholder="جستجو: BTC, ETH, SHIB …"></div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="tblCrypto">
+            <thead>
+              <tr>
+                <th>#</th><th>نماد</th><th>نام</th><th>قیمت</th><th>24h%</th><th>ارزش بازار</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- جدول ارزهای فیات -->
+      <div class="card">
+        <div class="card-body">
+          <div class="row" style="justify-content:space-between; align-items:center">
+            <div class="title">واحد پول کشورها (نرخ پایه: EUR)</div>
+            <div class="search" style="max-width:320px"><input id="searchFx" class="inp" placeholder="جستجو: USD, IRR, JPY, GBP …"></div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="tblFx">
+            <thead>
+              <tr>
+                <th>کُد</th><th>نام</th><th>نرخ</th><th>تغییر 24h</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- نمودار انتخاب‌شده -->
+      <div class="card">
+        <div class="card-body">
+          <div class="row" style="justify-content:space-between; align-items:center">
+            <div class="title">نمودار قیمت • <span id="chartTitle">—</span></div>
+            <div class="row">
+              <button class="btn" data-range="1">1D</button>
+              <button class="btn" data-range="7">7D</button>
+              <button class="btn" data-range="30">30D</button>
+              <button class="btn" data-range="90">90D</button>
+            </div>
+          </div>
+          <div class="chart-box" style="margin-top:10px">
+            <canvas id="chart" height="260"></canvas>
+          </div>
+        </div>
+      </div>
+
     </div>
-  </main>
+  </section>
 
+  <!-- تب پشتیبانی -->
+  <section id="support">
+    <div class="grid">
+      <div class="card">
+        <div class="card-body">
+          <div class="title">پشتیبانی • تیکت جدید</div>
+          <p class="muted">پیام شما فقط توسط ادمین و خودتان دیده می‌شود.</p>
+          <div class="row" style="margin-top:10px">
+            <input id="supSubj" class="inp" style="flex:1" placeholder="موضوع (مثلاً مشکل ورود)"/>
+            <button class="btn blue" id="sendTicket">ارسال</button>
+          </div>
+          <textarea id="supBody" class="txt" placeholder="شرح درخواست یا مشکل…"></textarea>
+          <div class="muted" id="supNote"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="title">گفتگوهای من</div>
+          <div id="myTickets" class="grid" style="gap:10px"></div>
+        </div>
+      </div>
+
+      <!-- پنل ادمین برای پاسخ -->
+      <div class="card">
+        <div class="card-body">
+          <div class="title">Admin • پاسخ تیکت‌ها</div>
+          <div class="muted" id="adminInfo">قفل است. از تب «ثبت‌نام» وارد ادمین شوید.</div>
+          <div id="adminTickets" class="grid" style="gap:10px; margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- تب ثبت‌نام -->
+  <section id="account">
+    <div class="grid">
+      <div class="card">
+        <div class="card-body">
+          <div class="title">ایجاد حساب / ورود</div>
+          <p class="muted">ورود با شماره موبایل + کد تأیید (دمو). عکس پروفایل و اطلاعات شما ذخیره و بعد از رفرش باقی می‌ماند.</p>
+
+          <div class="row" style="align-items:flex-start; gap:16px; flex-wrap:wrap; margin-top:8px">
+            <div style="min-width:220px">
+              <div class="muted">عکس پروفایل</div>
+              <img id="avatar" src="" alt="avatar" style="width:96px;height:96px;border-radius:50%;border:1px solid var(--line);object-fit:cover; display:block; margin-top:6px">
+              <input id="avatarFile" type="file" accept="image/*" style="margin-top:8px">
+              <button class="btn" id="btnSaveAvatar" style="margin-top:6px">ذخیره عکس</button>
+            </div>
+
+            <div class="grid" style="flex:1; gap:8px">
+              <div class="row">
+                <input id="accPhone" class="inp" style="flex:1" placeholder="شماره (مثلاً 09...)">
+                <button class="btn" id="sendOTP">ارسال کد</button>
+                <span class="chip" id="otpSentNote"></span>
+              </div>
+              <div class="row">
+                <input id="accOTP" class="inp" style="max-width:140px" placeholder="کد">
+                <input id="accUser" class="inp" placeholder="نام‌کاربری">
+              </div>
+              <div class="row">
+                <input id="accPass" class="inp" placeholder="پسورد">
+                <button class="btn blue" id="verifyOTP">ورود</button>
+              </div>
+
+              <!-- ادمین -->
+              <div id="adminStep" style="display:none">
+                <div class="row">
+                  <input id="adminSecret" class="inp" placeholder="کلید ویژه">
+                  <input id="adminPass" class="inp" placeholder="پسورد ادمین (دلخواه)">
+                </div>
+              </div>
+
+              <div class="row">
+                <button class="btn" id="logout">خروج</button>
+                <span class="chip" id="accNote">وضعیت: میهمان</span>
+                <button class="btn" id="btnForgot">فراموشی رمز</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- فراموشی رمز -->
+          <div id="forgotBox" class="card" style="margin-top:12px; display:none">
+            <div class="card-body">
+              <div class="title">بازیابی رمز</div>
+              <div class="row" style="margin-top:8px">
+                <input id="fpPhone" class="inp" placeholder="شماره ثبت‌شده">
+                <button class="btn" id="fpSend">ارسال کد</button>
+                <span class="chip" id="fpNote"></span>
+              </div>
+              <div class="row" style="margin-top:8px">
+                <input id="fpOTP" class="inp" placeholder="کد">
+                <input id="fpNew" class="inp" placeholder="پسورد جدید">
+                <input id="fpNew2" class="inp" placeholder="تکرار پسورد جدید">
+                <button class="btn blue" id="fpSet">ثبت رمز جدید</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<footer>
+  <span class="chip">منبع کریپتو: CoinGecko</span>
+  <span class="chip">منبع فیات: Frankfurter</span>
+</footer>
+
+<!-- کشوی قیمت‌ها -->
+<div class="drawer" id="drawer">
+  <div class="hd">
+    <div class="title">داشبورد سریع قیمت‌ها</div>
+    <button class="btn close" id="drawerClose">بستن</button>
+  </div>
+  <div class="bd">
+    <div class="title">کریپتو</div>
+    <input id="qDrawerCrypto" class="inp" placeholder="جستجو در کریپتو">
+    <div class="table-wrap" style="max-height:40vh">
+      <table id="drawerCrypto">
+        <thead><tr><th>#</th><th>نماد</th><th>قیمت</th><th>24h%</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="title" style="margin-top:8px">واحد پول کشورها</div>
+    <input id="qDrawerFx" class="inp" placeholder="جستجو در فیات">
+    <div class="table-wrap" style="max-height:40vh">
+      <table id="drawerFx">
+        <thead><tr><th>کد</th><th>نرخ (به EUR)</th><th>24h%</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- مودال AI -->
+<div class="modal" id="aiModal">
+  <div class="sheet">
+    <div class="hd">
+      <div class="title">دستیار هوشمند</div>
+      <button class="btn close" id="aiClose">بستن</button>
+    </div>
+    <div class="bd">
+      <p class="muted">با فارسی یا انگلیسی سوال کن. نمونه‌ها:  
+        «قیمت BTC چنده؟» • «نرخ USD» • «ویکی: ساتوشی ناکاموتو» • “price ETH”</p>
+      <textarea id="aiIn" class="txt" placeholder="سلام! دربارهٔ کدوم ارز/موضوع کمک می‌خوای؟"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn blue" id="aiSend">ارسال</button>
+        <button class="btn" id="aiClear">پاک کردن</button>
+      </div>
+      <div id="aiOut" class="grid" style="gap:10px; margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================== تنظیمات و وضعیت ================== */
+const ADMIN_PHONE = "09114392359";
+const SECRET_VORTEX = "vortex"; // محرمانه؛ در UI نمایش داده نمی‌شود
+const REFRESH_MS = 15000;
+
+const st = {
+  user:null,          // {phone, username, pass, avatar}
+  otp:null,           // کدهای دمو
+  fp_otp:null,        // کد فراموشی رمز
+  isAdmin:false,
+  adminPass:null,
+
+  crypto:[],          // لیست کریپتو
+  fx:{ base:"EUR", rates:{}, prev:{} }, // نرخ فیات
+  lastCryptoTime:null,
+
+  tickets:[],         // {id, fromPhone, fromUser, ts, subj, body, replies:[{from, body, ts}]}
+  selectedSymbol:null,
+  chartRange:7        // روز
+};
+
+/* ذخیره/لود از localStorage */
+(function load(){
+  try{
+    const u=localStorage.getItem("rad_user"); if(u) st.user=JSON.parse(u);
+    const a=localStorage.getItem("rad_admin"); if(a){ const j=JSON.parse(a); st.isAdmin=j.isAdmin; st.adminPass=j.adminPass||null; }
+    const t=localStorage.getItem("rad_tickets"); if(t) st.tickets=JSON.parse(t);
+    const av=localStorage.getItem("rad_avatar"); if(av) document.getElementById("avatar").src=av;
+  }catch(e){}
+})();
+function persist(){ localStorage.setItem("rad_tickets", JSON.stringify(st.tickets)); }
+
+/* ================== ناوبری تب‌ها ================== */
+const tabs=["home","support","account"];
+function setTab(id){
+  tabs.forEach(t=>{
+    document.getElementById(t).classList.remove("active");
+    document.querySelector(`[data-tab="${t}"]`).classList.remove("active");
+  });
+  document.getElementById(id).classList.add("active");
+  const btn=document.querySelector(`[data-tab="${id}"]`); if(btn) btn.classList.add("active");
+}
+document.querySelectorAll(".btn-ico[data-tab]").forEach(b=> b.addEventListener("click",()=>setTab(b.dataset.tab)));
+document.getElementById("fabSupport").addEventListener("click",()=>setTab("support"));
+setTab("home");
+
+/* ================== کشو (قیمت‌ها) ================== */
+const drawer=document.getElementById("drawer");
+document.getElementById("btnDrawer").onclick=()=>drawer.classList.add("show");
+document.getElementById("drawerClose").onclick=()=>drawer.classList.remove("show");
+
+/* ================== AI Modal ================== */
+const aiModal=document.getElementById("aiModal");
+const openAI = ()=> aiModal.classList.add("show");
+const closeAI= ()=> aiModal.classList.remove("show");
+document.getElementById("btnAI").onclick=openAI;
+document.getElementById("fabAI").onclick=openAI;
+document.getElementById("aiClose").onclick=closeAI;
+document.getElementById("aiClear").onclick=()=>{ document.getElementById("aiIn").value=""; document.getElementById("aiOut").innerHTML=""; };
+document.getElementById("aiSend").onclick=askAI;
+
+/* ================== حساب/ورود ================== */
+const accNote = document.getElementById("accNote");
+updateAccNote();
+
+document.getElementById("sendOTP").onclick=()=>{
+  const ph=document.getElementById("accPhone").value.trim();
+  if(!ph){ setNote("otpSentNote","اول شماره را وارد کنید"); return; }
+  st.otp=(Math.floor(1000+Math.random()*9000)).toString();
+  setNote("otpSentNote","کد تست: "+st.otp);
+  document.getElementById("adminStep").style.display = (ph===ADMIN_PHONE) ? "block" : "none";
+};
+document.getElementById("verifyOTP").onclick=()=>{
+  const code=document.getElementById("accOTP").value.trim();
+  const phone=document.getElementById("accPhone").value.trim();
+  const user=document.getElementById("accUser").value.trim();
+  const pass=document.getElementById("accPass").value.trim();
+  if(!st.otp){ setAcc("اول کد را دریافت کنید"); return; }
+  if(code!==st.otp){ setAcc("کد اشتباه است"); return; }
+  if(!user || !pass){ setAcc("نام‌کاربری و پسورد را پر کنید"); return; }
+
+  // ادمین
+  if(phone===ADMIN_PHONE){
+    const key=document.getElementById("adminSecret").value.trim();
+    const apass=document.getElementById("adminPass").value.trim();
+    if(key!==SECRET_VORTEX){ setAcc("دسترسی ادمین محدود است"); return; }
+    if(!apass){ setAcc("پسورد ادمین دلخواه را تنظیم کنید"); return; }
+    st.isAdmin=true; st.adminPass=apass;
+    localStorage.setItem("rad_admin", JSON.stringify({isAdmin:true, adminPass:apass}));
+    document.getElementById("adminInfo").textContent="ادمین فعال است.";
+  }else{
+    st.isAdmin=false; st.adminPass=null; localStorage.removeItem("rad_admin");
+    document.getElementById("adminInfo").textContent="قفل است. از تب «ثبت‌نام» وارد ادمین شوید.";
+  }
+
+  st.user={ phone, username:user, pass };
+  localStorage.setItem("rad_user", JSON.stringify(st.user));
+  st.otp=null;
+  setAcc((st.isAdmin?"ADMIN • ":"")+"وارد شدی: "+user);
+  renderTickets();
+};
+document.getElementById("logout").onclick=()=>{
+  st.user=null; st.isAdmin=false; st.adminPass=null;
+  localStorage.removeItem("rad_user"); localStorage.removeItem("rad_admin");
+  setAcc("وضعیت: میهمان");
+  renderTickets();
+};
+
+document.getElementById("btnForgot").onclick=()=> document.getElementById("forgotBox").style.display="block";
+document.getElementById("fpSend").onclick=()=>{
+  const ph=document.getElementById("fpPhone").value.trim();
+  if(!ph){ setNote("fpNote","شماره را وارد کنید"); return; }
+  st.fp_otp=(Math.floor(1000+Math.random()*9000)).toString();
+  setNote("fpNote","کد تست: "+st.fp_otp);
+};
+document.getElementById("fpSet").onclick=()=>{
+  const ph=document.getElementById("fpPhone").value.trim();
+  const c=document.getElementById("fpOTP").value.trim();
+  const p1=document.getElementById("fpNew").value.trim();
+  const p2=document.getElementById("fpNew2").value.trim();
+  if(c!==st.fp_otp){ setNote("fpNote","کد اشتباه است"); return; }
+  if(!p1||p1!==p2){ setNote("fpNote","پسوردها یکسان نیستند"); return; }
+  // اگر همین کاربر لاگین است و شماره یکی باشد، پسورد جدید اعمال شود
+  if(st.user && st.user.phone===ph){ st.user.pass=p1; localStorage.setItem("rad_user", JSON.stringify(st.user)); }
+  setNote("fpNote","پسورد جدید ذخیره شد");
+  st.fp_otp=null;
+};
+
+function setAcc(t){ accNote.textContent=t; }
+function setNote(id, t){ const el=document.getElementById(id); if(el) el.textContent=t; }
+function updateAccNote(){
+  if(st.user){ setAcc((st.isAdmin?"ADMIN • ":"")+"وارد شدی: "+st.user.username); }
+  else setAcc("وضعیت: میهمان");
+}
+
+/* عکس پروفایل */
+document.getElementById("btnSaveAvatar").onclick=async ()=>{
+  const f=document.getElementById("avatarFile").files[0];
+  if(!f){ alert("فایل عکس را انتخاب کنید"); return; }
+  const url=await fileToDataURL(f);
+  document.getElementById("avatar").src=url;
+  localStorage.setItem("rad_avatar", url);
+};
+(function preloadAvatar(){
+  const av=localStorage.getItem("rad_avatar");
+  if(av) document.getElementById("avatar").src=av;
+})();
+
+/* ================== پشتیبانی (تیکت) ================== */
+document.getElementById("sendTicket").onclick=()=>{
+  if(!st.user){ setNote("supNote","ابتدا وارد حساب شوید"); return; }
+  const subj=document.getElementById("supSubj").value.trim();
+  const body=document.getElementById("supBody").value.trim();
+  if(!subj || !body){ setNote("supNote","موضوع و متن را پر کنید"); return; }
+  const t={ id:cryptoRandomId(), fromPhone:st.user.phone, fromUser:st.user.username, ts:Date.now(), subj, body, replies:[] };
+  st.tickets.unshift(t); persist();
+  document.getElementById("supSubj").value=""; document.getElementById("supBody").value="";
+  setNote("supNote","ثبت شد و فقط شما و ادمین می‌بینید");
+  renderTickets();
+};
+function renderTickets(){
+  const mine=document.getElementById("myTickets"); mine.innerHTML="";
+  const adminBox=document.getElementById("adminTickets"); adminBox.innerHTML="";
+  const myPhone = st.user?.phone || null;
+
+  st.tickets.forEach(t=>{
+    // کارت کاربر (فقط تیکت‌های خودش)
+    if(myPhone && t.fromPhone===myPhone){
+      mine.appendChild(ticketCard(t, false));
+    }
+    // کارت ادمین
+    if(st.isAdmin){
+      adminBox.appendChild(ticketCard(t, true));
+    }
+  });
+}
+function ticketCard(t, adminView){
+  const wrap=document.createElement("div"); wrap.className="card";
+  const d=new Date(t.ts);
+  let html = `<div class="card-body">
+    <div class="row" style="justify-content:space-between">
+      <div style="font-weight:900">${escapeHTML(t.subj)}</div>
+      <div class="muted">${d.toLocaleString()}${adminView?(" • "+t.fromUser+" ("+t.fromPhone+")"):""}</div>
+    </div>
+    <div style="margin-top:6px">${nl2br(escapeHTML(t.body))}</div>
+    <div class="grid" style="gap:8px; margin-top:10px">`;
+  t.replies.forEach(r=>{
+    html += `<div class="msg"><div class="muted" style="font-size:12px">${r.from} • ${new Date(r.ts).toLocaleString()}</div>${nl2br(escapeHTML(r.body))}</div>`;
+  });
+  html += `</div>`;
+  if(adminView || st.user){
+    html += `<div class="row" style="margin-top:8px">
+      <input class="inp" id="reply_${t.id}" placeholder="پاسخ...">
+      <button class="btn" onclick="replyTicket('${t.id}')">${adminView?"ارسال پاسخ ادمین":"ارسال"}</button>
+    </div>`;
+  }
+  html += `</div>`;
+  wrap.innerHTML=html;
+  return wrap;
+}
+window.replyTicket = (id)=>{
+  const inp=document.getElementById("reply_"+id);
+  if(!inp) return;
+  const body=inp.value.trim(); if(!body) return;
+  const idx=st.tickets.findIndex(x=>x.id===id); if(idx<0) return;
+  const from = st.isAdmin ? "Admin" : (st.user?.username || "User");
+  st.tickets[idx].replies.push({from, body, ts:Date.now()});
+  persist(); renderTickets(); inp.value="";
+};
+renderTickets();
+
+/* ================== داده‌های بازار ================== */
+const refreshSecEl=document.getElementById("refreshSec"); refreshSecEl.textContent = Math.round(REFRESH_MS/1000);
+
+document.getElementById("btnRefresh").onclick=()=>{ loadCrypto(); loadFx(); };
+
+const COINGECKO_LIST_URL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=200&page=1&sparkline=false&price_change_percentage=24h';
+const COINGECKO_HISTORY = (id,days)=>`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`;
+const FRANK_BASE = 'https://api.frankfurter.app/latest?from=EUR';
+
+async function loadCrypto(){
+  try{
+    const r=await fetch(COINGECKO_LIST_URL);
+    const j=await r.json();
+    st.crypto=j.map((x,i)=>({
+      rank:i+1, id:x.id, symbol:x.symbol.toUpperCase(), name:x.name,
+      price:x.current_price, ch24:x.price_change_percentage_24h, mc:x.market_cap
+    }));
+    st.lastCryptoTime=Date.now();
+    renderCryptoTables();
+  }catch(e){ /* بی‌صدا */ }
+}
+function renderCryptoTables(){
+  const qAll = document.getElementById("searchAll").value.trim().toLowerCase();
+  const q = document.getElementById("searchCrypto").value.trim().toLowerCase();
+  const body=document.querySelector("#tblCrypto tbody"); body.innerHTML="";
+  const bodyD=document.querySelector("#drawerCrypto tbody"); bodyD.innerHTML="";
+
+  st.crypto
+    .filter(x=>{
+      const m1 = !q || x.symbol.toLowerCase().includes(q) || x.name.toLowerCase().includes(q);
+      const m2 = !qAll || x.symbol.toLowerCase().includes(qAll) || x.name.toLowerCase().includes(qAll);
+      return m1 && m2;
+    })
+    .forEach(x=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML = `<td>${x.rank}</td>
+        <td><a href="#" onclick="pickSymbol('${x.id}','${x.symbol}')">${x.symbol}</a></td>
+        <td>${escapeHTML(x.name)}</td>
+        <td>$${fmt(x.price)}</td>
+        <td class="${x.ch24>=0?'up':'down'}">${x.ch24?x.ch24.toFixed(2):'0.00'}%</td>
+        <td>$${fmt(x.mc)}</td>`;
+      body.appendChild(tr);
+
+      const tr2=document.createElement("tr");
+      tr2.innerHTML = `<td>${x.rank}</td><td>${x.symbol}</td>
+                       <td>$${fmt(x.price)}</td>
+                       <td class="${x.ch24>=0?'up':'down'}">${x.ch24?x.ch24.toFixed(2):'0.00'}%</td>`;
+      bodyD.appendChild(tr2);
+    });
+}
+async function pickSymbol(id, sym){
+  st.selectedSymbol={id, sym};
+  document.getElementById("chartTitle").textContent = sym.toUpperCase()+" / USD";
+  await drawChartDays(st.chartRange);
+}
+document.querySelectorAll('[data-range]').forEach(b=>{
+  b.onclick=async ()=>{ st.chartRange=parseInt(b.dataset.range,10); await drawChartDays(st.chartRange); };
+});
+
+let chart; async function drawChartDays(days){
+  if(!st.selectedSymbol){ return; }
+  try{
+    const r=await fetch(COINGECKO_HISTORY(st.selectedSymbol.id, days));
+    const j=await r.json();
+    const xs = j.prices.map(p=> new Date(p[0]));
+    const ys = j.prices.map(p=> p[1]);
+    const ctx=document.getElementById("chart").getContext("2d");
+    if(chart){ chart.destroy(); }
+    chart = new Chart(ctx, {
+      type:'line',
+      data:{ labels: xs, datasets:[{ label: st.selectedSymbol.sym.toUpperCase(), data: ys, tension:.25 }]},
+      options:{
+        responsive:true,
+        scales:{
+          x:{ ticks:{ callback:(v,i)=> i%Math.ceil(xs.length/6)===0 ? xs[i].toLocaleDateString():'' } },
+          y:{ ticks:{ callback:(v)=> "$"+fmt(v) } }
+        }
+      }
+    });
+  }catch(e){}
+}
+
+async function loadFx(){
+  try{
+    // نرخ‌های لحظه‌ای
+    const r=await fetch(FRANK_BASE); const j=await r.json();
+    const prev = st.fx.rates;
+    st.fx={ base:j.base, rates:j.rates, prev: prev };
+    renderFxTables();
+  }catch(e){}
+}
+function renderFxTables(){
+  const qAll = document.getElementById("searchAll").value.trim().toLowerCase();
+  const q = document.getElementById("searchFx").value.trim().toLowerCase();
+  const tbody=document.querySelector("#tblFx tbody"); tbody.innerHTML="";
+  const tbodyD=document.querySelector("#drawerFx tbody"); tbodyD.innerHTML="";
+
+  const codes=Object.keys(st.fx.rates).sort();
+  codes.forEach(code=>{
+    if(q && !code.toLowerCase().includes(q)) return;
+    if(qAll && !code.toLowerCase().includes(qAll)) return;
+    const rate=st.fx.rates[code];
+    const old = st.fx.prev?.[code];
+    const ch = (old && old!==0) ? ((rate-old)/old*100) : 0;
+
+    const tr=document.createElement("tr");
+    tr.innerHTML = `<td>${code}</td><td>${rate.toFixed(6)}</td>
+      <td class="${ch>=0?'up':'down'}">${(ch||0).toFixed(3)}%</td>`;
+    tbody.appendChild(tr);
+
+    const tr2=tr.cloneNode(true); tbodyD.appendChild(tr2);
+  });
+}
+
+/* جستجو */
+["searchAll","searchCrypto","searchFx","qDrawerCrypto","qDrawerFx"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", ()=>{
+    renderCryptoTables(); renderFxTables();
+  });
+});
+
+/* تایمر آپدیت */
+loadCrypto(); loadFx();
+setInterval(()=>{ loadCrypto(); loadFx(); }, REFRESH_MS);
+
+/* ================== AI ================== */
+function pushAI(role, text){
+  const out=document.getElementById("aiOut");
+  const div=document.createElement("div"); div.className="msg";
+  div.innerHTML = `<div class="muted" style="font-size:12px">${role}</div><div>${linkify(nl2br(escapeHTML(text)))}</div>`;
+  out.prepend(div);
+}
+function isFA(s){ return /[\u0600-\u06FF]/.test(s); }
+
+async function askAI(){
+  const q=document.getElementById("aiIn").value.trim(); if(!q) return;
+  pushAI("شما", q);
+
+  const low=q.toLowerCase();
+  const fa=isFA(q);
+
+  // سلام و احوال
+  if(/^سلام|^hi|^hello/.test(low)){
+    pushAI("هوش مصنوعی", fa?"سلام! در مورد قیمت ارز یا هر موضوعی بپرس.":"Hey! Ask me about crypto/FX prices or anything.");
+  }
+
+  // قیمت کوین: "قیمت btc" یا "price eth"
+  const m1 = q.match(/(?:قیمت|price)\s+([a-zA-Z]{2,10})/);
+  if(m1){
+    const sym=m1[1].toUpperCase();
+    const row = st.crypto.find(x=> x.symbol===sym);
+    if(row){ pushAI("هوش مصنوعی", `${sym}: $${fmt(row.price)} • 24h ${row.ch24>=0?"+":""}${row.ch24?.toFixed(2)}%`); return; }
+    else { pushAI("هوش مصنوعی", `هنوز دادهٔ ${sym} در لیست نیست. کمی بعد دوباره امتحان کن.`); return; }
+  }
+
+  // نرخ فیات: "نرخ usd" یا "rate eur"
+  const m2 = q.match(/(?:نرخ|rate)\s+([a-zA-Z]{3})/);
+  if(m2){
+    const code=m2[1].toUpperCase();
+    const rate=st.fx.rates[code];
+    if(rate){ pushAI("هوش مصنوعی", `${code}/${st.fx.base}: ${rate.toFixed(6)}`); return; }
+    else { pushAI("هوش مصنوعی", `کُد ${code} در نرخ‌های فعلی یافت نشد.`); return; }
+  }
+
+  // ویکی‌پدیا: "ویکی: ..." یا "wiki: ..."
+  let term=null, lang="en";
+  if(low.startsWith("wiki:")) term=q.slice(5).trim();
+  if(q.startsWith("ویکی") || q.startsWith("ویکی:") || q.startsWith("ویکی‌پدیا")){
+    term=q.replace(/^ویکی(‌| )?پدیا?:?/,"").replace(/^ویکی:?/,"").trim(); lang="fa";
+  }
+  if(term){
+    try{
+      const enc=encodeURIComponent(term);
+      const url= lang==="fa"
+        ? `https://fa.wikipedia.org/api/rest_v1/page/summary/${enc}`
+        : `https://en.wikipedia.org/api/rest_v1/page/summary/${enc}`;
+      const r=await fetch(url, {headers:{'Accept':'application/json'}});
+      if(r.ok){
+        const j=await r.json();
+        const title=j.title||term;
+        const extract=j.extract||"خلاصه‌ای موجود نیست.";
+        const link=j.content_urls?.desktop?.page || (lang==="fa"?`https://fa.wikipedia.org/wiki/${enc}`:`https://en.wikipedia.org/wiki/${enc}`);
+        pushAI("هوش مصنوعی", (fa?`خلاصهٔ ویکی‌پدیا (${title}):\n`:`Wikipedia summary (${title}):\n`)+extract+`\n\n${link}`);
+        return;
+      }
+    }catch(e){}
+  }
+
+  // پیش‌فرض
+  pushAI("هوش مصنوعی", fa?"اینجا هستم. می‌تونی از قیمت‌ها یا ویکی بپرسی؛ مثل «قیمت BTC»، «نرخ USD» یا «ویکی: ویتالیک بوترین».":"I’m here. Ask about prices or wiki, e.g., “price ETH”, “rate USD”, or “wiki: Satoshi”.");
+}
+
+/* ================== ابزارها ================== */
+function fmt(n){ if(n>=1e12) return (n/1e12).toFixed(2)+"T"; if(n>=1e9) return (n/1e9).toFixed(2)+"B"; if(n>=1e6) return (n/1e6).toFixed(2)+"M"; if(n>=1e3) return (n/1e3).toFixed(2)+"K"; return (Math.round(n*100)/100).toString(); }
+function nl2br(s){ return s.replace(/\n/g,"<br>"); }
+function linkify(s){ return s.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank">$1</a>'); }
+function escapeHTML(s){ return s.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]) ); }
+function cryptoRandomId(){ return "t_"+Math.random().toString(36).slice(2,10); }
+function fileToDataURL(file){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); }); }
+
+/* ================== انتخاب پیش‌فرض برای نمودار ================== */
+(async function bootstrapChart(){
+  await loadCrypto();
+  const btc = st.crypto.find(x=>x.symbol==="BTC") || st.crypto[0];
+  if(btc){ pickSymbol(btc.id, btc.symbol); }
+})();
+
+/* بازگردانی وضعیت لاگین/ادمین روی UI */
+(function initAdminUI(){
+  if(st.isAdmin){ document.getElementById("adminInfo").textContent="ادمین فعال است."; }
+  updateAccNote();
+})();
+</script>
 </body>
 </html>
